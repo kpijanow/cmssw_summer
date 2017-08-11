@@ -34,6 +34,8 @@ void l1t::Stage2Layer2DemuxSumsAlgoFirmwareImp1::processEvent(const std::vector<
   uint32_t mbp0(0), mbm0(0), mbp1(0), mbm1(0);
   uint32_t ntow(0);
 
+  bool metSat(0), metHFSat(0);
+
   // Add up the x, y and scalar components
   for (std::vector<l1t::EtSum>::const_iterator eSum = inputSums.begin() ; eSum != inputSums.end() ; ++eSum )
     {
@@ -48,11 +50,13 @@ void l1t::Stage2Layer2DemuxSumsAlgoFirmwareImp1::processEvent(const std::vector<
         break;
 
       case l1t::EtSum::EtSumType::kTotalEtx:
-        metx += eSum->hwPt();
+	if(eSum->hwPt()==0x7fffffff) metSat=true;
+        else metx += eSum->hwPt();
         break;
 
       case l1t::EtSum::EtSumType::kTotalEty:
-        mety += eSum->hwPt();
+	if(eSum->hwPt()==0x7fffffff) metSat=true;
+        else mety += eSum->hwPt();
         break;
 
       case l1t::EtSum::EtSumType::kTotalHt:
@@ -61,26 +65,28 @@ void l1t::Stage2Layer2DemuxSumsAlgoFirmwareImp1::processEvent(const std::vector<
 
       case l1t::EtSum::EtSumType::kTotalHtx:
         mhtx += eSum->hwPt();
-        break;
+	break;
 
       case l1t::EtSum::EtSumType::kTotalHty:
-        mhty += eSum->hwPt();
+	mhty += eSum->hwPt();
         break;
-
+	
       case l1t::EtSum::EtSumType::kTotalEtxHF:
-        metxHF += eSum->hwPt();
+	if(eSum->hwPt()==0x7fffffff) metHFSat=true;
+        else metxHF += eSum->hwPt();
         break;
-
+	
       case l1t::EtSum::EtSumType::kTotalEtyHF:
-        metyHF += eSum->hwPt();
+	if(eSum->hwPt()==0x7fffffff) metHFSat=true;
+        else metyHF += eSum->hwPt();
         break;
 
       case l1t::EtSum::EtSumType::kTotalHtxHF:
-        mhtxHF += eSum->hwPt();
+	mhtxHF += eSum->hwPt();
         break;
 	
       case l1t::EtSum::EtSumType::kTotalHtyHF:
-        mhtyHF += eSum->hwPt();
+	mhtyHF += eSum->hwPt();
         break;
 
       case l1t::EtSum::EtSumType::kMinBiasHFP0:
@@ -107,38 +113,44 @@ void l1t::Stage2Layer2DemuxSumsAlgoFirmwareImp1::processEvent(const std::vector<
         continue; // Should throw an exception or something?
       }
     }
+
   
   if (et>0xFFF)   et   = 0xFFF;
-  //if (metx>0xFFF) metx = 0xFFF;
-  //if (mety>0xFFF) mety = 0xFFF;
+  if (etem>0xFFF) etem = 0xFFF;
   if (ht>0xFFF)   ht   = 0xFFF;
+  
   //if (mhtx>0xFFF) mhtx = 0xFFF;
   //if (mhty>0xFFF) mhty = 0xFFF;
-  //if (metxHF>0xFFF) metxHF = 0xFFF;
-  //if (metyHF>0xFFF) metyHF = 0xFFF;
+
 
   mhtPhi = (111 << 4);
   mhtPhiHF = (111 << 4); // to match hw value if undefined
   
   // Final MET calculation
-  if (metx != 0 || mety != 0 ) cordic_( metx , mety , metPhi , met );
+  if ( (metx != 0 || mety != 0) && !metSat ) cordic_( metx , mety , metPhi , met );
   // sets the met scale back to the original range for output into GT, this corresponds to
   // the previous scaling of sin/cos factors in calculation of metx and mety by 2^10 = 1024
   met >>= 10; 
 
   // Final METHF calculation
-  if (metxHF != 0 || metyHF != 0 ) cordic_( metxHF , metyHF , metPhiHF , metHF );
+  if ( (metxHF != 0 || metyHF != 0) && !metHFSat ) cordic_( metxHF , metyHF , metPhiHF , metHF );
   metHF >>= 10;
 
 
   // Final MHT calculation
-  if (mhtx != 0 || mhty != 0 ) cordic_( mhtx , mhty , mhtPhi , mht );
+  if ( mhtx != 0 || mhty != 0 ) cordic_( mhtx , mhty , mhtPhi , mht );
   // sets the mht scale back to the original range for output into GT, the other 4
   // bits are brought back just before the accumulation of ring sum in MP jet sum algorithm
   mht >>= 6; 
 
-  if (mhtxHF != 0 || mhtyHF != 0 ) cordic_( mhtxHF , mhtyHF , mhtPhiHF , mhtHF );
+  if ( mhtxHF != 0 || mhtyHF != 0 ) cordic_( mhtxHF , mhtyHF , mhtPhiHF , mhtHF );
   mhtHF >>= 6; 
+
+
+  if(metSat) met=0xFFF;
+  if(metHFSat) metHF=0xFFF;
+  if(mht>0xFFF) mht=0xFFF;
+  if(mhtHF>0xFFF) mhtHF=0xFFF;
 
   // Make final collection
   math::XYZTLorentzVector p4;

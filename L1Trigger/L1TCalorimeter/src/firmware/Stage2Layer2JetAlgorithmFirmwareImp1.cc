@@ -172,7 +172,7 @@ void l1t::Stage2Layer2JetAlgorithmFirmwareImp1::create(const std::vector<l1t::Ca
 	    if (iEt<=0) continue;
 
 	    // if tower Et is saturated, saturate jet Et
-	    if (seedEt >= 509) iEt = 65535;
+	    if (seedEt == CaloTools::kSatHcal || seedEt == CaloTools::kSatEcal || seedEt == CaloTools::kSatTower) iEt = 65535;
 
 	    jet.setHwPt(iEt);
 	    jet.setRawEt( (short int) rawEt);
@@ -380,7 +380,7 @@ int l1t::Stage2Layer2JetAlgorithmFirmwareImp1::chunkyDonutPUEstimate(l1t::Jet & 
       const CaloTower& towPhiDown = CaloTools::getTower(towers, CaloTools::caloEta(towEta), iphiDown);
       towEt = towPhiDown.hwPt();
       ring[1] += towEt;
-            
+
     } 
     
     // do EtaUp
@@ -394,13 +394,10 @@ int l1t::Stage2Layer2JetAlgorithmFirmwareImp1::chunkyDonutPUEstimate(l1t::Jet & 
         const CaloTower& towEtaUp = CaloTools::getTower(towers, CaloTools::caloEta(ietaUp), towPhi);
         int towEt = towEtaUp.hwPt();
         ring[2] += towEt;
-      }else{
-        ring[2] = 0;
-        break;
       }
-      
-    } 
-    
+
+    }
+
     // do EtaDown
     for (int iphi=jetPhi-size+1; iphi<jetPhi+size; ++iphi) {
       
@@ -412,16 +409,13 @@ int l1t::Stage2Layer2JetAlgorithmFirmwareImp1::chunkyDonutPUEstimate(l1t::Jet & 
         const CaloTower& towEtaDown = CaloTools::getTower(towers, CaloTools::caloEta(ietaDown), towPhi);
         int towEt = towEtaDown.hwPt();
         ring[3] += towEt;
-      }else{
-        ring[3] = 0;
-        break;
       }
-      
+     
     }     
     
     
   }
-  
+    
   // for donut subtraction we only use the middle 2 (in energy) ring strips
   // std::sort(ring.begin(), ring.end(), std::greater<int>());
   // return ( ring[1]+ring[2] ); 
@@ -429,8 +423,8 @@ int l1t::Stage2Layer2JetAlgorithmFirmwareImp1::chunkyDonutPUEstimate(l1t::Jet & 
   // use lowest 3 strips as PU estimate
   std::sort( ring.begin(), ring.end() );
   
-  for(uint i=0; i<4; ++i)    jet.setPUDonutEt(i, (short int) ring[i]);
-    
+  for(uint i=0; i<4; ++i) jet.setPUDonutEt(i, (short int) ring[i]);
+
   return ( ring[0] + ring[1] + ring[2] );
   
 }
