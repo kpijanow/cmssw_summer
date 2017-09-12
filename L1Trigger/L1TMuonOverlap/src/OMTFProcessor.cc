@@ -72,12 +72,22 @@ const void OMTFProcessor::processInput(unsigned int iProcessor,
       //std::cout<<"iLayer "<<iLayer<<" refHitNum "<<myOmtfConfig->nTestRefHits()-nTestedRefHits-1<<" iRefHit "<<iRefHit;
       //std::cout<<" nTestedRefHits "<<nTestedRefHits<<" aRefHitDef "<<aRefHitDef<<std::endl;
 
+      int refLayerLogicNumber = myOmtfConfig->getRefToLogicNumber()[aRefHitDef.iRefLayer];
+      int refLayerPhiB = 0;
+      if(refLayerLogicNumber < 6) {//is DT layer TODO - check
+        refLayerPhiB = aInput.getLayerData(refLayerLogicNumber+1)[aRefHitDef.iInput]; //corresponding bending layer has number +1 versus the phi DT layer - this is configured in the XML
+        if(myOmtfConfig->getBendingLayers().count(refLayerLogicNumber+1) == 0) {
+          throw cms::Exception("not good: the layer is not bending layer");
+        }
+      }
+
       for(auto& itGP: theGPs) {
         if(itGP->key().thePt == 0) //empty pattern
           continue;
         GoldenPattern::layerResult aLayerResult = itGP->process1Layer1RefLayer(aRefHitDef.iRefLayer, iLayer,
             phiRef,
-            restrictedLayerHits);
+            restrictedLayerHits,
+            refLayerPhiB);
         int phiRefSt2 = itGP->propagateRefPhi(phiRef, etaRef, aRefHitDef.iRefLayer);
 /*        myResults[myOmtfConfig->nTestRefHits()-nTestedRefHits-1][itGP.second->key()].setRefPhiRHits(aRefHitDef.iRefLayer, phiRef);
         myResults[myOmtfConfig->nTestRefHits()-nTestedRefHits-1][itGP.second->key()].addResult(aRefHitDef.iRefLayer, iLayer,

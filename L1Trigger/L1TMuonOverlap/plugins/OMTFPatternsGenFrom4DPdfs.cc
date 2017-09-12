@@ -30,19 +30,16 @@
 OMTFPatternsGenFrom4DPdfs::OMTFPatternsGenFrom4DPdfs(const edm::ParameterSet& cfg):
 theConfig(cfg),
 g4SimTrackSrc(cfg.getParameter<edm::InputTag>("g4SimTrackSrc")) {
-
   inputTokenDTPh = consumes<L1MuDTChambPhContainer>(theConfig.getParameter<edm::InputTag>("srcDTPh"));
   inputTokenDTTh = consumes<L1MuDTChambThContainer>(theConfig.getParameter<edm::InputTag>("srcDTTh"));
   inputTokenCSC = consumes<CSCCorrelatedLCTDigiCollection>(theConfig.getParameter<edm::InputTag>("srcCSC"));
   inputTokenRPC = consumes<RPCDigiCollection>(theConfig.getParameter<edm::InputTag>("srcRPC"));
   inputTokenSimHit = consumes<edm::SimTrackContainer>(theConfig.getParameter<edm::InputTag>("g4SimTrackSrc"));
-
   myInputMaker = new OMTFinputMaker();
 
   makeGoldenPatterns = theConfig.getParameter<bool>("makeGoldenPatterns");
   makeConnectionsMaps = theConfig.getParameter<bool>("makeConnectionsMaps");
   mergeXMLFiles = theConfig.getParameter<bool>("mergeXMLFiles");
-
   myOMTFConfig = 0;
 }
 /////////////////////////////////////////////////////
@@ -65,11 +62,10 @@ void OMTFPatternsGenFrom4DPdfs::beginRun(edm::Run const& run, edm::EventSetup co
   omtfParamsRcd.get(omtfParamsHandle);
 
   const L1TMuonOverlapParams* omtfParams = omtfParamsHandle.product();
-
   if (!omtfParams) {
     edm::LogError("L1TMuonOverlapTrackProducer") << "Could not retrieve parameters from Event Setup" << std::endl;
   }
-
+  std::cout<<__FUNCTION__<<"\t"<<__LINE__<<std::endl;
   ///Initialise XML writer with default pdf.
   myWriter = new XMLConfigWriter(myOMTFConfig);
 
@@ -82,9 +78,8 @@ void OMTFPatternsGenFrom4DPdfs::beginRun(edm::Run const& run, edm::EventSetup co
   //if(!mergeXMLFiles) //the LUTs are then too big in the GoldenPatternPdf4D
   generalParams[L1TMuonOverlapParams::GENERAL_ADDRBITS] = nPdfAddrBits + 2; //2*nPdfAddrBits;
   omtfParamsMutable.setGeneralParams(generalParams);
-
-  myOMTFConfig->configure(&omtfParamsMutable);*/
-
+  */
+  myOMTFConfig->configure(omtfParams);
   processor->configure(myOMTFConfig, omtfParams);
 
 /*  int ptCode = theConfig.getParameter<int>("ptCode"); //assuming that here the legay PAC pt code is given
@@ -115,6 +110,7 @@ void OMTFPatternsGenFrom4DPdfs::endJob(){
 /////////////////////////////////////////////////////
 /////////////////////////////////////////////////////
 void OMTFPatternsGenFrom4DPdfs::writeGPs() {
+  myWriter->initialiseXMLDocument("OMTF");
   const std::vector<GoldenPattern*> & myGPs = processor->getPatterns();
 
   GoldenPattern *dummy = new GoldenPattern(Key(0,0,0), myOMTFConfig);
@@ -129,6 +125,8 @@ void OMTFPatternsGenFrom4DPdfs::writeGPs() {
     }
     myWriter->writeGPData(*gps[0],*gps[1], *gps[2], *gps[3]);
   }
+  std::string fName = "GPs.xml";
+  myWriter->finaliseXMLDocument(fName);
 }
 /////////////////////////////////////////////////////
 /////////////////////////////////////////////////////

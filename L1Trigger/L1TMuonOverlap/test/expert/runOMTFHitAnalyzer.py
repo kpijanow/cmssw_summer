@@ -3,6 +3,8 @@ process = cms.Process("OMTFEmulation")
 import os
 import sys
 import commands
+from os import listdir
+from os.path import isfile, join
 
 verbose = False
 
@@ -60,18 +62,19 @@ if not verbose:
     process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32(1000)
 process.options = cms.untracked.PSet(wantSummary = cms.untracked.bool(True))
 
+#path = '/afs/cern.ch/user/k/kpijanow/workspace/public/SingleMu/'
+path = '/eos/user/k/kbunkow/cms_data/SingleMuFullEta/721_FullEta_v4/'
+onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
+chosenFiles = ['file://' + path + f for f in onlyfiles if 'Mu_' + sys.argv[2] +'_' + sys.argv[3] + '_' in f]
+
+
 process.source = cms.Source(
     'PoolSource',
     #fileNames = cms.untracked.vstring('file:///afs/cern.ch/work/a/akalinow/CMS/OverlapTrackFinder/data/Crab/SingleMuFullEtaTestSample/720_FullEta_v1/data/SingleMu_16_p_1_2_TWz.root')
     #fileNames = cms.untracked.vstring('file:///home/akalinow/scratch/CMS/OverlapTrackFinder/Crab/SingleMuFullEta/721_FullEta_v4/data/SingleMu_25_p_133_2_QJ1.root')
     #fileNames = cms.untracked.vstring('file:///afs/cern.ch/work/k/kbunkow/private/omtf_data/SingleMu_18_p_1_1_2KD.root')
-    #fileNames = cms.untracked.vstring('file:///afs/cern.ch/work/k/kbunkow/private/omtf_data/SingleMu_15_p_1_1_qtl.root')
-    #fileNames = cms.untracked.vstring('file:///afs/cern.ch/work/k/kbunkow/private/omtf_data/SingleMu_5_p_1_1_Meh.root')
-    #fileNames = cms.untracked.vstring('file:///afs/cern.ch/work/k/kbunkow/private/omtf_data/SingleMu_7_p_1_1_DkC.root')
-    #fileNames = cms.untracked.vstring('file:/afs/cern.ch/work/g/gflouris/public/SingleMuPt6180_noanti_10k_eta1.root')
-    fileNames = cms.untracked.vstring('file:///eos/user/k/kbunkow/cms_data/SingleMuFullEta/721_FullEta_v4/SingleMu_22_m_99_2_buq.root')
-   
-)
+    fileNames = cms.untracked.vstring(set(chosenFiles)))
+
 '''
 ##Use all available events in a single job.
 ##Only for making the connections maps.
@@ -117,6 +120,12 @@ process.esProd = cms.EDAnalyzer("EventSetupRecordDataGetter",
    verbose = cms.untracked.bool(True)
 )
 
+chargeArg = 0
+if sys.argv[3] == 'm':
+    chargeArg = -1
+else:
+    chargeArg = 1
+
 ###OMTF pattern maker configuration
 process.omtfHitAnalyzer = cms.EDAnalyzer("OMTFHitAnalyzer",
                                           srcDTPh = cms.InputTag('simDtTriggerPrimitiveDigis'),
@@ -130,8 +139,8 @@ process.omtfHitAnalyzer = cms.EDAnalyzer("OMTFHitAnalyzer",
                                           dropRPCPrimitives = cms.bool(False),                                    
                                           dropDTPrimitives = cms.bool(False),                                    
                                           dropCSCPrimitives = cms.bool(False),   
-                                          ptCode = cms.int32(22),#this is old PAC pt scale.
-                                          charge = cms.int32(-1),
+                                          ptCode = cms.int32(int(sys.argv[2])),#this is old PAC pt scale.
+                                          charge = cms.int32(chargeArg),
                                           omtf = cms.PSet(
                                               configFromXML = cms.bool(False),   
                                               patternsXMLFiles = cms.VPSet(                                       

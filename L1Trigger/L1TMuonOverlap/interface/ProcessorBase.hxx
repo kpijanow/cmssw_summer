@@ -24,7 +24,6 @@ template<class GoldenPatternType>
 bool ProcessorBase<GoldenPatternType>::configure(const OMTFConfiguration* omtfConfig,
     const L1TMuonOverlapParams* omtfPatterns){
   resetConfiguration();
-
   myOmtfConfig = omtfConfig;
 
   //myResults.assign(myOmtfConfig->nTestRefHits(),ProcessorBase::resultsMap());
@@ -34,7 +33,6 @@ bool ProcessorBase<GoldenPatternType>::configure(const OMTFConfiguration* omtfCo
   const l1t::LUT* ptLUT =  omtfPatterns->ptLUT();
   const l1t::LUT* pdfLUT =  omtfPatterns->pdfLUT();
   const l1t::LUT* meanDistPhiLUT =  omtfPatterns->meanDistPhiLUT();
-
   unsigned int nGPs = myOmtfConfig->nGoldenPatterns();
   edm::LogInfo("MTFProcessor::configure")<<"myOmtfConfig->nGoldenPatterns() "<<nGPs<<std::endl;
   unsigned int address = 0;
@@ -46,7 +44,6 @@ bool ProcessorBase<GoldenPatternType>::configure(const OMTFConfiguration* omtfCo
     iEta = etaLUT->data(address);
     iCharge = chargeLUT->data(address)==0? -1:1;
     iPt = ptLUT->data(address);
-
     Key aKey(iEta,iPt,iCharge,iGP);
     edm::LogInfo("OMTFProcessor::configure")<<"adding pattern "<<aKey<<" "<<myOmtfConfig->getPatternPtRange(iGP).ptFrom<<" - "<<myOmtfConfig->getPatternPtRange(iGP).ptTo<<" GeV"<<std::endl;
     GoldenPatternType *aGP = new GoldenPatternType(aKey, myOmtfConfig);

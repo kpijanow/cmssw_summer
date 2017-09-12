@@ -13,6 +13,7 @@
 #include "L1Trigger/L1TMuonOverlap/interface/OMTFConfiguration.h"
 #include "L1Trigger/L1TMuonOverlap/interface/XMLConfigWriter.h"
 #include "L1Trigger/L1TMuonOverlap/interface/OmtfName.h"
+#include "L1Trigger/L1TMuonOverlap/interface/GhostBusterPreferRefDt.h"
 
 #include "L1Trigger/RPCTrigger/interface/RPCConst.h"
 
@@ -79,6 +80,8 @@ void OMTFReconstruction::beginRun(edm::Run const& run, edm::EventSetup const& iS
     std::string fName = "OMTF";
     m_Writer->initialiseXMLDocument(fName);
   }
+
+  m_OMTF->setGhostBuster(new GhostBusterPreferRefDt(m_OMTFConfig));
 }
 /////////////////////////////////////////////////////
 /////////////////////////////////////////////////////
