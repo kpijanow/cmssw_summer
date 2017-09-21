@@ -59,8 +59,8 @@ void PatternsGeneratorProcessor::generatePatterns() {
               generateDTSelfPattern(iGroup, iRefLayer, iLayer);
             }
             else{
-              generateDTPattern(iGroup, iRefLayer, iLayer);
-              //copyDTPattern(iGroup, iRefLayer, iLayer);
+              //generateDTPattern(iGroup, iRefLayer, iLayer);
+              copyDTPattern(iGroup, iRefLayer, iLayer);
             }
           }
           else{
@@ -94,8 +94,9 @@ void PatternsGeneratorProcessor::generateDTPattern(int iGroup, int iRefLayer, in
     }
 
 		double sigY = getMeanSigma(h.at(k)) * 0.8; 		//sigma in Y direction, multiplication by 0.8 is empirical
+		double norm =  h.at(k)->GetSum()/hRef->GetSum(); //1;//
 
-		const float logC = log(h.at(k)->GetSum()/hRef->GetSum() * 1.0 / sqrt(2 * TMath::Pi()) / sigY);
+		const float logC = log(norm * 1.0 / sqrt(2 * TMath::Pi()) / sigY);
 		const float minPlog =  log(myOmtfConfig->minPdfVal());
 		const int nPdfValBits = myOmtfConfig->nPdfValBits();
 
@@ -187,7 +188,7 @@ void PatternsGeneratorProcessor::generateNonDTPattern(int iGroup, int iRefLayer,
 		for(unsigned int iPdf=0;iPdf<(unsigned int)(1<<myOmtfConfig->nPdfAddrBits());++iPdf)
 		{
 			// +1 in GetBinContent is due to bin numbers in ROOT (bin = 0; underflow bin)
-			float pVal = log(h.at(k)->GetBinContent(meanDistPhi - exp2(myOmtfConfig->nPdfAddrBits()-1) + iPdf + 1)/hRef->GetSum());
+			float pVal = log(h.at(k)->GetBinContent(meanDistPhi - exp2(myOmtfConfig->nPdfAddrBits()-1) + iPdf + 1)/hRef->GetSum()); //h.at(k)->GetSum()); //
 			if(pVal < minPlog || hRef->GetSum() == 0){
 				theGPs.at(mergedPartters[iGroup][k])->setPdfValue(0, iLayer, iRefLayer, iPdf);
 			  continue;
@@ -260,8 +261,17 @@ void PatternsGeneratorProcessor::generateDTSelfPattern(int iGroup, int iRefLayer
 void PatternsGeneratorProcessor::copyDTPattern(int iGroup, int iRefLayer, int iLayer){
   OMTFConfiguration::vector2D mergedPartters = myOmtfConfig->getMergedPartters();
   int iMerge = mergedPartters[iGroup].size();
+  int histCount = 0;
   std::vector<TH2F*> h;
   int meanDistPhi = getMenDistPhiLoadHisto(iGroup, iRefLayer, iLayer, &h);
+  meanDistPhi = 0;
+  for(auto a: h){
+    if(a->GetSum() > emptyHistogramCount){
+      meanDistPhi += a->ProjectionY("hProj")->GetMean();
+      histCount++;}
+  }
+  if(histCount)
+    meanDistPhi = rint(meanDistPhi / histCount);
 
   for(int k = 0; k < iMerge; k++)
   {
@@ -277,17 +287,18 @@ void PatternsGeneratorProcessor::copyDTPattern(int iGroup, int iRefLayer, int iL
     theGPs.at(mergedPartters[iGroup][k])->setMeanDistPhiValue(meanDistPhi - h.at(k)->GetNbinsX()/2, iLayer, iRefLayer, 0);
     const float minPlog =  log(myOmtfConfig->minPdfVal());
     const int nPdfValBits = myOmtfConfig->nPdfValBits();
-
     ///Pdf data
     for(unsigned int iPdf=0;iPdf<(unsigned int)(1<<myOmtfConfig->nPdfAddrBits());++iPdf)
     {
       // +1 in GetBinContent is due to bin numbers in ROOT (bin = 0; underflow bin)
-      float pVal = log(hProj->GetBinContent(meanDistPhi - exp2(myOmtfConfig->nPdfAddrBits()-1) + iPdf + 1)/hRef->GetSum());
+      float pVal = log(hProj->GetBinContent(meanDistPhi - exp2(myOmtfConfig->nPdfAddrBits()-1) + iPdf + 1)/hRef->GetSum()); //h.at(k)->GetSum()); //
       if(pVal < minPlog || hRef->GetSum() == 0){
         theGPs.at(mergedPartters[iGroup][k])->setPdfValue(0, iLayer, iRefLayer, iPdf);
         continue;
       }
       int digitisedVal = rint((std::pow(2,nPdfValBits)-1) - (pVal/minPlog)*(std::pow(2,nPdfValBits)-1));
+      if(ipt == 11 && iRefLayer == 5 && iLayer == 0 && charge == 1)
+        std::cout<<iPdf<<" "<<digitisedVal<<" "<<minPlog<<" "<<pVal<<" "<<hRef->GetSum()<<" "<<hProj->GetBinContent(meanDistPhi - exp2(myOmtfConfig->nPdfAddrBits()-1) + iPdf + 1)<<std::endl;
       theGPs.at(mergedPartters[iGroup][k])->setPdfValue(digitisedVal, iLayer, iRefLayer, iPdf);
     }
     delete hRef;
@@ -314,11 +325,15 @@ int PatternsGeneratorProcessor::getMenDistPhiLoadHisto(int iGroup, int iRefLayer
     if((*h).at(k)->GetSum() < emptyHistogramCount){ //if this happens then histogram is considered empty
       continue;
     }
-    meanDistPhi += (*h).at(k)->GetMean()* (*h).at(k)->GetSum();
-    meanDistCount += (*h).at(k)->GetSum();
+    if((ipt == 9 || ipt == 10) && iRefLayer == 5 && iLayer == 0 && charge == 1)
+      std::cout<<"MEANDISTPHI "<<(*h).at(k)->GetMean()<<" "<<(*h).at(k)->GetSum()<<" "<<ipt<<std::endl;
+    meanDistPhi += (*h).at(k)->GetMean();//* (*h).at(k)->GetSum();
+    meanDistCount++;//= (*h).at(k)->GetSum();
   }
+//  if(meanDistCount)
+//    meanDistPhi = rint(meanDistPhi/meanDistCount);
   if(meanDistCount)
-    meanDistPhi = rint(meanDistPhi/meanDistCount);
+    meanDistPhi = meanDistPhi / meanDistCount;
 
   return meanDistPhi;
 }
@@ -338,11 +353,13 @@ int PatternsGeneratorProcessor::getMenDistPhiLoadHisto(int iGroup, int iRefLayer
     if((*h).at(k)->GetSum() < emptyHistogramCount){ //if this happens then histogram is considered empty
       continue;
     }
-    meanDistPhi += (*h).at(k)->GetMean()* (*h).at(k)->GetSum();
-    meanDistCount += (*h).at(k)->GetSum();
+    meanDistPhi += (*h).at(k)->GetMean();//* (*h).at(k)->GetSum();
+    meanDistCount++;//= (*h).at(k)->GetSum();
   }
+//  if(meanDistCount)
+//    meanDistPhi = rint(meanDistPhi/meanDistCount);
   if(meanDistCount)
-    meanDistPhi = rint(meanDistPhi/meanDistCount);
+    meanDistPhi = meanDistPhi / meanDistCount;
 
   return meanDistPhi;
 }
